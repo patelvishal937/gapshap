@@ -2,12 +2,14 @@ import 'dart:developer';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:gapshap_4/services/chat/chatService.dart';
 import 'package:gapshap_4/widgets/chatBubble.dart';
 import 'package:gapshap_4/widgets/my_text_field.dart';
+import 'package:translator/translator.dart';
 import 'package:velocity_x/velocity_x.dart';
+
+import '../services/chat/translation.dart';
 
 class ChatPage extends StatefulWidget {
   final String reciverUserEmail;
@@ -20,6 +22,24 @@ class ChatPage extends StatefulWidget {
 }
 
 class _ChatPageState extends State<ChatPage> {
+  // conver messege into another language
+
+  String language1 = Translations.languages.first;
+  String language2 = Translations.languages.first;
+
+  // tranlate Languge
+
+  String? out;
+  GoogleTranslator googleTranslator = GoogleTranslator();
+  void trnslate(String text) {
+    googleTranslator.translate(language1, to: language2).then((output) {
+      setState(() {
+        out = output.text;
+      });
+    });
+  }
+
+  // controller
   final TextEditingController _messageController = TextEditingController();
   final ChatService _chatService = ChatService();
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
@@ -34,13 +54,17 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  // DELTE THE MESSAGE
-  void deleteMessage() async {
-    final uid = _firebaseAuth.currentUser!.uid;
+  CollectionReference collectionRef =
+      FirebaseFirestore.instance.collection('collection');
 
-    
-    log(uid);
-    await _chatService.deleteMessage(widget.reciverUserId, uid);
+  Future<void> deleteData(String chat_rooms) async {
+    try {
+      await collectionRef.doc(chat_rooms).delete();
+      print(collectionRef);
+      print('Document with ID $chat_rooms deleted successfully');
+    } catch (e) {
+      print('Error deleting document: $e');
+    }
   }
 
   @override
@@ -48,7 +72,28 @@ class _ChatPageState extends State<ChatPage> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.deepPurple,
-        title: Text(widget.reciverUserEmail).centered(),
+        // title: Text(widget.reciverUserEmail).centered(),
+        title: Row(
+          children: [
+            Dropdown(
+                onChanged: (String? newValue) {
+                  setState(() {
+                    language1 = newValue.toString();
+                  });
+                },
+                selectedLanguage: language1),
+            const SizedBox(width: 10),
+            const Icon(Icons.published_with_changes_sharp),
+            const SizedBox(width: 10),
+            Dropdown(
+                onChanged: (String? newValue) {
+                  setState(() {
+                    language2 = newValue.toString();
+                  });
+                },
+                selectedLanguage: language2),
+          ],
+        ).centered(),
       ),
       body: Column(
         children: [
@@ -64,6 +109,7 @@ class _ChatPageState extends State<ChatPage> {
       ),
     );
   }
+
   // build a message list
 
   Widget _buildMessageList() {
@@ -109,11 +155,9 @@ class _ChatPageState extends State<ChatPage> {
         : Alignment.centerLeft;
     return Container(
       alignment: alignment,
+
+      // for deleting the messege
       child: GestureDetector(
-        // onTap: () {
-        //   print("messege is tapped");
-        //   showAboutDialog(context: context);
-        // },
         onTap: () => showDialog<String>(
           context: context,
           builder: (BuildContext context) => AlertDialog(
@@ -125,7 +169,7 @@ class _ChatPageState extends State<ChatPage> {
                 child: const Text('No'),
               ),
               TextButton(
-                onPressed: () => deleteMessage(),
+                onPressed: () => deleteData(collectionRef.toString()),
                 child: const Text('Yes'),
               ),
             ],
@@ -135,12 +179,38 @@ class _ChatPageState extends State<ChatPage> {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             // Text(data['senderEmailId']).px8(),
-            ChatBubble(message: data['message']),
-            Text(data['day'].toString()).px12(),
+            // ChatBubble(message: data['message']),
+
+            FutureBuilder<String>(
+              future: _translateMessage(data['message']),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Container(
+                    child: const Text('loading'),
+                  );
+                } else if (snapshot.hasError) {
+                  return Text('Translation Error: ${snapshot.error}');
+                } else {
+                  return ChatBubble(message: snapshot.data ?? data['message']);
+                }
+              },
+            ),
+            // Text(data['day'].toString()).px12(),
+            // Text(data['message']),
           ],
         ),
       ),
     );
+  }
+
+  // translate langaage
+  Future<String> _translateMessage(String message) async {
+    if (language1 != language2) {
+      final translation = await googleTranslator.translate(message,
+          from: language1, to: language2);
+      return translation.text;
+    }
+    return message; // Return the original message if no translation is needed
   }
 
   // build a messege input

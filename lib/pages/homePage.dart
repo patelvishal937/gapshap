@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:gapshap_4/pages/chatPage.dart';
+import 'package:gapshap_4/pages/profilePage.dart';
 import 'package:gapshap_4/services/auth/authService.dart';
 import 'package:provider/provider.dart';
 import 'package:velocity_x/velocity_x.dart';
@@ -33,7 +34,12 @@ class _HomepageState extends State<Homepage> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.deepPurple,
-        leading: const Icon(CupertinoIcons.home),
+        leading: IconButton(
+            onPressed: () {
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (context) => Profilepage()));
+            },
+            icon: Icon(CupertinoIcons.home)),
         title: _isSearching
             ? TextField(
                 decoration: const InputDecoration(
@@ -78,7 +84,7 @@ class _HomepageState extends State<Homepage> {
           return const Text("error");
         }
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const CircularProgressIndicator();
+          return const CircularProgressIndicator().centered();
         }
         return ListView(
           children: snapshot.data!.docs
@@ -97,10 +103,10 @@ class _HomepageState extends State<Homepage> {
     if (_auth.currentUser?.email != data['email']) {
       return SafeArea(
         child: Card(
-          color: Colors.white12,
+          color: Colors.deepPurple,
           child: ListTile(
-            textColor: Colors.black,
-            iconColor: Colors.black,
+            textColor: Colors.white,
+            iconColor: Colors.white,
 
             // title for email
 

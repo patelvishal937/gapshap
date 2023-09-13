@@ -19,8 +19,9 @@ class MainApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (context)=> AuthService()  ,
+      create: (context) => AuthService(),
       child: const MaterialApp(
+        themeMode: ThemeMode.dark,
         debugShowCheckedModeBanner: false,
         home: AuthGate(),
       ),
